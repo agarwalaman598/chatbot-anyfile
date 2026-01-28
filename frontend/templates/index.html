@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>AnyFile Chatbot</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<div class="app" id="dropZone">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>AnyFile Chatbot</h1>
+    <div class="controls">
+      <select id="model">
+        <option value="llama3">LLaMA 3</option>
+        <option value="gemma">Gemma</option>
+      </select>
+
+      <label class="file-label">
+        Upload File
+        <input type="file" id="file" accept=".pdf,.docx,.xlsx">
+      </label>
+
+      <button onclick="uploadFile()">Index</button>
+    </div>
+  </div>
+
+  <div class="status" id="status">No file uploaded</div>
+
+  <!-- Chat -->
+ <div class="main">
+  <div class="preview" id="preview">
+    <h3>File Preview</h3>
+    <p id="fileName">No file selected</p>
+    <p id="fileType"></p>
+    <p id="fileSize"></p>
+  </div>
+
+  <div id="chat" class="chat"></div>
+</div>
+
+  <!-- Input -->
+  <div class="input-bar">
+    <input
+      id="query"
+      type="text"
+      placeholder="Ask something about your document..."
+      onkeydown="handleEnter(event)"
+    >
+    <button class="send-btn" onclick="sendQuery()">Send</button>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<div id="dropOverlay">Drop file to upload</div>
+</body>
+</html>
