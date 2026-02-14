@@ -255,13 +255,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 📊 Project Stats
-
-![Stars](https://img.shields.io/github/stars/agarwalaman598/chatbot-anyfile?style=social)
-![Forks](https://img.shields.io/github/forks/agarwalaman598/chatbot-anyfile?style=social)
-![Issues](https://img.shields.io/github/issues/agarwalaman598/chatbot-anyfile)
-![License](https://img.shields.io/github/license/agarwalaman598/chatbot-anyfile)
-
----
-
 <p align="center">Made with ❤️ by Aman Agarwal</p>
