@@ -2,8 +2,6 @@
 
 > **Intelligent document Q&A powered by AI** - Upload PDFs, DOCX, or XLSX files and chat with your documents using advanced language models.
 
-![App Demo](./assets/demo.gif)
-<!-- Add your demo GIF here -->
 
 ---
 
