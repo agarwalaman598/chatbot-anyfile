@@ -14,7 +14,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import OllamaEmbeddings
 
-
 # ── Config ────────────────────────────────────────────────────────────────────
 UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {"pdf", "docx", "xlsx"}
@@ -36,23 +35,19 @@ vectorstore = None
 _embeddings_cache = {}
 _llm_cache = {}
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
 
 def get_embeddings(model):
     if model not in _embeddings_cache:
         _embeddings_cache[model] = OllamaEmbeddings(model=model)
     return _embeddings_cache[model]
 
-
 def get_llm(model):
     if model not in _llm_cache:
         _llm_cache[model] = Ollama(model=model)
     return _llm_cache[model]
-
 
 # ── Text Extraction ──────────────────────────────────────────────────────────
 def extract_text(filepath, emit):
@@ -80,12 +75,10 @@ def extract_text(filepath, emit):
         df = pd.read_excel(filepath)
         parts.append(df.to_string())
         emit(40, "Text extracted")
-
     else:
         raise ValueError(f"Unsupported type: {ext}")
 
     return "\n".join(parts).strip()
-
 
 # ── Vector Store ─────────────────────────────────────────────────────────────
 def build_vectorstore(text, model, emit):
@@ -105,12 +98,10 @@ def build_vectorstore(text, model, emit):
     emit(95, "Indexing complete")
     return vs
 
-
 # ── Routes ───────────────────────────────────────────────────────────────────
 @app.route("/")
 def home():
     return render_template("index.html")
-
 
 @app.route("/models")
 def list_models():
@@ -120,13 +111,13 @@ def list_models():
         out = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=5)
         names = []
         for line in out.stdout.strip().splitlines()[1:]:
-            n = line.split()[0].split(":")[0]
+            # ✅ FIX: Keep the full tag (e.g., gemma:2b) to avoid 404s
+            n = line.split()[0] 
             if n and n not in names:
                 names.append(n)
-        return jsonify({"models": names or ["llama3", "gemma"]})
+        return jsonify({"models": names or ["llama3", "gemma:2b"]})
     except Exception:
-        return jsonify({"models": ["llama3", "gemma"]})
-
+        return jsonify({"models": ["llama3", "gemma:2b"]})
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
@@ -144,27 +135,26 @@ def upload_file():
     filename = secure_filename(file.filename)
     filepath = os.path.abspath(os.path.join(UPLOAD_FOLDER, filename))
 
+    # ✅ FIX: Save file in MAIN THREAD to prevent "I/O operation on closed file"
+    file.save(filepath)
+
     q = queue.Queue()
     SENTINEL = object()
 
     def emit(progress=None, message="", complete=False, error=None):
         d = {}
-        if progress is not None:
-            d["progress"] = progress
-        if message:
-            d["message"] = message
-        if complete:
+        if progress is not None: d["progress"] = progress
+        if message: d["message"] = message
+        if complete: 
             d["complete"] = True
             d["filename"] = filename
-        if error:
-            d["error"] = error
+        if error: d["error"] = error
         q.put(d)
 
     def worker():
         global vectorstore
         try:
-            emit(5, "Uploading file...")
-            file.save(filepath)
+            # File is already saved to disk, so we just start extracting
             emit(10, "Extracting text...")
             text = extract_text(filepath, emit)
             if not text or len(text) < 10:
@@ -182,15 +172,13 @@ def upload_file():
     def stream():
         while True:
             item = q.get()
-            if item is SENTINEL:
-                break
+            if item is SENTINEL: break
             yield f"data: {json.dumps(item)}\n\n"
 
     resp = Response(stream_with_context(stream()), mimetype="text/event-stream")
     resp.headers["Cache-Control"] = "no-cache"
     resp.headers["X-Accel-Buffering"] = "no"
     return resp
-
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -215,7 +203,6 @@ def chat():
         f"Context:\n{context}\n\nQuestion: {query}"
     )
     return jsonify({"response": llm.invoke(prompt)})
-
 
 if __name__ == "__main__":
     app.run(debug=True, use_reloader=False)
