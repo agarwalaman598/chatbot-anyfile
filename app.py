@@ -40,9 +40,12 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def get_embeddings(model):
-    if model not in _embeddings_cache:
-        _embeddings_cache[model] = OllamaEmbeddings(model=model)
-    return _embeddings_cache[model]
+    # IMPROVEMENT: Always use a dedicated embedding model.
+    # We ignore the 'model' parameter (which is the chat model, e.g., llama3)
+    # because chat models make poor embeddings.
+    if "nomic-embed-text" not in _embeddings_cache:
+        _embeddings_cache["nomic-embed-text"] = OllamaEmbeddings(model="nomic-embed-text")
+    return _embeddings_cache["nomic-embed-text"]
 
 def get_llm(model):
     if model not in _llm_cache:
@@ -91,6 +94,8 @@ def build_vectorstore(text, model, emit):
         raise ValueError("No text chunks produced")
 
     emit(55, f"Embedding {len(chunks)} chunks...")
+    
+    # This will now use nomic-embed-text regardless of the user's chat model choice
     emb = get_embeddings(model)
 
     emit(70, "Building vector index...")
@@ -111,9 +116,9 @@ def list_models():
         out = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=5)
         names = []
         for line in out.stdout.strip().splitlines()[1:]:
-            # ✅ FIX: Keep the full tag (e.g., gemma:2b) to avoid 404s
-            n = line.split()[0] 
-            if n and n not in names:
+            n = line.split()[0]
+            # Filter out the embedding model from the chat dropdown if you want
+            if n and "nomic" not in n and n not in names:
                 names.append(n)
         return jsonify({"models": names or ["llama3", "gemma:2b"]})
     except Exception:
@@ -135,7 +140,6 @@ def upload_file():
     filename = secure_filename(file.filename)
     filepath = os.path.abspath(os.path.join(UPLOAD_FOLDER, filename))
 
-    # ✅ FIX: Save file in MAIN THREAD to prevent "I/O operation on closed file"
     file.save(filepath)
 
     q = queue.Queue()
@@ -154,7 +158,6 @@ def upload_file():
     def worker():
         global vectorstore
         try:
-            # File is already saved to disk, so we just start extracting
             emit(10, "Extracting text...")
             text = extract_text(filepath, emit)
             if not text or len(text) < 10:
@@ -193,6 +196,7 @@ def chat():
     query = data["query"].strip()
     model = data.get("model", "llama3")
 
+    # Similarity search will now work much better due to nomic-embed-text
     docs = vectorstore.similarity_search(query, k=3)
     context = "\n\n".join(d.page_content for d in docs)
 
